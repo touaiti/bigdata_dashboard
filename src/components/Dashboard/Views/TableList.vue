@@ -5,13 +5,13 @@
           <div class="col-md-12">
             <div class="col-md-3 pull-right">
               <p class="category">To :</p>
-               <input type="date" v-model="listQuery.toDate" />
-               <input type="time" v-model="listQuery.toTime"/>
+               <input type="date" v-model="listQuery.toDate" @change="getList()"/>
+               <input type="time" v-model="listQuery.toTime"  @change="getList()"/>
             </div>  
             <div class="col-md-3 pull-right">
               <p class="category">From : </p>
-               <input type="date" v-model="listQuery.fromDate"/>
-               <input type="time" v-model="listQuery.fromTime"/>
+               <input type="date" v-model="listQuery.fromDate"  @change="getList()"/>
+               <input type="time" v-model="listQuery.fromTime"  @change="getList()"/>
             </div>
           </div>
           <paper-table :title="table1.title" :sub-title="table1.subTitle" :data="table1.data" :columns="table1.columns">
@@ -24,7 +24,7 @@
 <script>
   import PaperTable from 'components/UIComponents/PaperTable.vue'
   import { fetchList } from '../../../api/objects'
-  const tableColumns = ['type', 'total', 'time']
+  const tableColumns = ['ObjectType', 'Accurency', 'Time']
 
   export default {
     components: {
@@ -47,9 +47,26 @@
       }
     },
     created () {
-      fetchList(this.listQuery).then(response => {
-        this.table1.data = response.data.items
-      })
+      var now = new Date()
+      var month = (now.getMonth() + 1)
+      var day = now.getDate()
+      if (month < 10) {
+        month = '0' + month
+      }
+      if (day < 10) {
+        day = '0' + day
+      }
+      var today = now.getFullYear() + '-' + month + '-' + day
+      this.fromDate = today
+      this.getList()
+    },
+    methods: {
+      getList () {
+        fetchList(this.listQuery).then(response => {
+          console.log(JSON.parse(response.data)[0])
+          this.table1.data = JSON.parse(response.data)
+        })
+      }
     }
   }
 

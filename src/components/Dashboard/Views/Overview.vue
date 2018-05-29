@@ -20,17 +20,17 @@
           </div>
         </stats-card>
       </div>
-      <div class="col-lg-3 col-sm-6">
+      <div class="col-lg-3 col-sm-6" v-for="o in objects">
         <stats-card>
           <div class="icon-big text-center" :class="`icon-success`" slot="header">
-            <i class="ti-user"></i>
+            <i :class="[o._id === 'cell phone' ? 'ti-mobile' : o._id === 'person' ? 'ti-user' : '', 'ti-sever']"></i>
           </div>
           <div class="numbers" slot="content">
-            <p>Number Of Persons</p>
-            {{nbPerson}}
+            <p>Number Of {{o._id}}</p>
+            {{o.count}}
           </div>
           <div class="stats" slot="footer">
-            <i class="ti-calendar"></i> Last Day
+            <i class="ti-reload"></i> Updated now
           </div>
         </stats-card>
       </div>
@@ -52,38 +52,35 @@
           </div>
         </chart-card>
       </div>
+      -->
       <div class="col-md-6 col-xs-12">
-        <chart-card :chart-data="preferencesChart.data"  chart-type="Pie">
-          <h4 class="title" slot="title">Email Statistics</h4>
-          <span slot="subTitle"> Last campaign performance</span>
+        <chart-card  v-if="pieChart" :chart-data="preferencesChart.data"  chart-type="Pie">
+          <h4 class="title" slot="title">Objects Statistics</h4>
+          <span slot="subTitle"> Types performance</span>
           <span slot="footer">
-            <i class="ti-timer"></i> Campaign set 2 days ago</span>
+            <i class="ti-reload"></i> Updated Now</span>
           <div slot="legend">
-            <i class="fa fa-circle text-info"></i> Open
-            <i class="fa fa-circle text-danger"></i> Bounce
-            <i class="fa fa-circle text-warning"></i> Unsubscribe
+            <span v-for=" t in types">
+                <i  :class="'fa fa-circle text-' + t.color"></i> {{t.text}}
+            </span>
           </div>
         </chart-card>
       </div>
-      -->
-      <div class="col-md-12 col-xs-12 card container">
+      <div class="col-md-12 col-xs-12 card container" style="heigth: 550px">
          <div class="col-md-3 pull-right">
               <p class="category">
                 <br/>
                 Date :
-                <input type="date" v-model="listQuery.date" />
+                <input type="date" v-model="listQuery.date" @change="getStatistics()" />
               </p>
-               
         </div>
       <div class="col-md-12 col-xs-12 ">
-          
-        
         <chart-card v-if="showGrid" :chart-data="activityChart.data" :chart-options="activityChart.options">
           <h4 class="title" slot="title">Objects detected per hour</h4>
 
           <span slot="subTitle"> 24 Hours performance</span>
           <span slot="footer">
-            <i class="ti-reload"></i> Updated 1 minutes ago</span>
+            <i class="ti-reload"></i> Updated now</span>
           <div slot="legend">
             
             <i class="fa fa-circle text-info"></i> Objects
@@ -98,7 +95,7 @@
 <script>
   import StatsCard from 'components/UIComponents/Cards/StatsCard.vue'
   import ChartCard from 'components/UIComponents/Cards/ChartCard.vue'
-  import { fetchList, fetchStatistics } from '../../../api/objects'
+  import { fetchStatistics, fetchPercent } from '../../../api/objects'
   export default {
     components: {
       StatsCard,
@@ -109,12 +106,15 @@
      */
     data () {
       return {
-        nbPerson: 0,
+        nbPersons: 0,
         nbObjects: 0,
         showGrid: false,
+        pieChart: false,
         listQuery: {
           date: null
         },
+        colors: ['info', 'warning', 'danger', 'success'],
+        types: [],
         /*
         usersChart: {
           data: {
@@ -143,9 +143,9 @@
          */
         activityChart: {
           data: {
-            labels: ['6:00AM', '7:00AM', '8:00AM', '9:00AM', '10:00AM', '11:00AM', '12:00AM', '01:00PM', '02:00PM', '03:00PM', '04:00PM', '05:00PM', '06:00PM', '07:00PM', '08:00PM'],
+            labels: ['00AM', '01AM', '02AM', '03AM', '04AM', '05AM', '6AM', '7AM', '8AM', '9AM', '10AM', '11AM', '12AM', '01PM', '02PM', '03PM', '04PM', '05PM', '06PM', '07PM', '08PM', '09PM', '10PM', '11PM'],
             series: [
-              [230, 293, 380, 480, 503, 553, 600, 664, 698, 710, 736, 795, 664, 698, 710]
+              []
             ]
           },
           options: {
@@ -167,18 +167,52 @@
       }
     },
     mounted () {
-      let d = []
-      fetchList(this.listQuery).then(reponse => {
-        reponse.data.items.forEach(element => {
-          d.push(Number(element.total))
+      this.getStatistics()
+      this.getPercents()
+    },
+    methods: {
+      getStatistics () {
+        this.showGrid = false
+        fetchStatistics(this.listQuery).then(reponse => {
+          var i = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+          var s = []
+          var data = JSON.parse(reponse.data)
+          i.forEach(element => {
+            var d = data.find((d) => { return Number(d._id) === element })
+            if (d) {
+              s.push(d.count)
+            } else {
+              s.push(0)
+            }
+          })
+          this.activityChart.data.series = [s]
+          this.showGrid = true
         })
-        this.activityChart.data.series = [d]
-        this.showGrid = true
-      })
-      fetchStatistics().then(reponse => {
-        this.nbPerson = reponse.data.nbPerson
-        this.nbObjects = reponse.data.nbObjects
-      })
+      },
+      getPercents () {
+        fetchPercent().then(reponse => {
+          var data = JSON.parse(reponse.data)
+          this.pieChart = false
+          var l = []
+          var s = []
+          var index = 0
+          this.objects = data
+          data.forEach(element => {
+            if (!isNaN(element.count)) {
+              this.nbObjects += element.count
+            }
+            if (element._id === 'person') {
+              this.nbPersons += element.count
+            }
+            l.push(Number(element.percent) * 100 + '%')
+            s.push(Number(element.percent))
+            this.types.push({color: this.colors[index++], text: element._id})
+          })
+          this.preferencesChart.data.labels = l
+          this.preferencesChart.data.series = s
+          this.pieChart = true
+        })
+      }
     }
   }
 </script>
